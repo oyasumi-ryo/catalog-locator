@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 export default function Home() {
   const [store, setStore] = useState("");
@@ -10,6 +10,14 @@ export default function Home() {
   const [confidence, setConfidence] = useState<number | null>(null);
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
+
+  const getConfidenceColor = (v: number) => {
+    if (v < 0.4) return "bg-red-500";
+    if (v < 0.7) return "bg-yellow-500";
+    return "bg-green-500";
+  };
+
+  const storeInputRef = useRef<HTMLInputElement>(null);
 
   const handleClick = async () => {
     if (!store || !item) {
@@ -38,6 +46,9 @@ export default function Home() {
       setSection(data.section || "不明");
       setConfidence(data.confidence ?? 0);
       setReason(data.reason || "");
+      setStore("");
+      setItem("");
+      storeInputRef.current?.focus();
     } catch (e: any) {
       setError(e.message ?? "通信に失敗しました");
     } finally {
@@ -54,6 +65,7 @@ export default function Home() {
                       [box-shadow:8px_8px_24px_#e5e7eb,_-8px_-8px_24px_#ffffff]">
         <div className="flex flex-col gap-3 text-gray-800">
           <input
+            ref={storeInputRef}       
             type="text"
             value={store}
             onChange={(e) => setStore(e.target.value)}
@@ -98,11 +110,29 @@ export default function Home() {
         <div className="text-2xl font-bold text-gray-800 mb-2">{section}</div>
 
         {confidence !== null && (
-          <div className="w-full h-3 bg-gray-200 rounded-full mb-3 overflow-hidden">
+          <div className="w-full mb-3">
+            {/* ラベル行（%表示） */}
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-gray-400">信頼度</span>
+              <span className="text-xs font-medium text-gray-600">
+                {(confidence * 100).toFixed(0)}%
+              </span>
+            </div>
+
+            {/* ゲージ本体 */}
             <div
-              className="h-3 bg-blue-500 rounded-full transition-all duration-500"
-              style={{ width: `${confidence * 100}%` }}
-            />
+              className="w-full h-3 bg-gray-200 rounded-full overflow-hidden"
+              role="progressbar"
+              aria-valuenow={Math.round(confidence * 100)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="AI推定の信頼度"
+            >
+              <div
+                className={`h-3 rounded-full transition-all duration-500 ${getConfidenceColor(confidence)}`}
+                style={{ width: `${confidence * 100}%` }}
+              />
+            </div>
           </div>
         )}
 
