@@ -6,9 +6,9 @@ export default function Home() {
   const [store, setStore] = useState("");
   const [item, setItem] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  const [section, setSection] = useState("ここにAIの回答が表示されます");
+  const [section, setSection] = useState("");
   const [confidence, setConfidence] = useState<number | null>(null);
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState("買い場所、買いたいものを入力してね");
   const [error, setError] = useState("");
 
   const getConfidenceColor = (v: number) => {
@@ -64,7 +64,7 @@ export default function Home() {
     <>
       <header className="fixed top-0 w-full bg-white shadow-md z-10 py-3">
         <h1 className="text-center text-xl font-semibold pt- text-gray-700">
-          カタログ識別アプリ
+          買い物コーナー識別アプリ
         </h1>
       </header>
       <main className="flex flex-col items-center justify-center min-h-screen bg-gray-50 gap-8">
@@ -78,7 +78,7 @@ export default function Home() {
               type="text"
               value={store}
               onChange={(e) => setStore(e.target.value)}
-              placeholder="買う場所（例：100円均一）"
+              placeholder="買う場所（例：100円均一、ホームセンター）"
               className="w-full p-3 rounded-xl outline-none bg-gray-50 border border-gray-200
                         focus:ring-2 focus:ring-blue-300"
             />

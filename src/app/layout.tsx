@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "買い物カタログ識別アプリ",
-  description: "G買いたいものとお店のタイプから、AIが売り場を推定します。",
+  description: "買いたいものとお店のタイプから、AIが売り場を推定します。",
   icons: {
     icon: "/favicon.ico",
   },
