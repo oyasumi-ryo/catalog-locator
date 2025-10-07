@@ -6,7 +6,9 @@ export default function Home() {
   const [store, setStore] = useState("");
   const [item, setItem] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  const [result, setResult] = useState("ここにAIの回答が表示されます");
+  const [section, setSection] = useState("ここにAIの回答が表示されます");
+  const [confidence, setConfidence] = useState<number | null>(null);
+  const [reason, setReason] = useState("");
   const [error, setError] = useState("");
 
   const handleClick = async () => {
@@ -14,9 +16,12 @@ export default function Home() {
       setError("「買う場所」と「買いたいもの」を両方入力してね");
       return;
     }
+
     setError("");
     setIsSearching(true);
-    setResult("検索中...");
+    setSection("検索中...");
+    setConfidence(null);
+    setReason("");
 
     try {
       const res = await fetch("/api/gemini", {
@@ -29,12 +34,11 @@ export default function Home() {
         throw new Error(t || "APIエラー");
       }
 
-      const data = await res.json(); // ← JSONに変更
-      // data: { section: string, confidence: number, reason: string }
-
-      setResult(`${data.section}（信頼度: ${(data.confidence * 100).toFixed(0)}%）`);
+      const data = await res.json(); // JSONで受け取る
+      setSection(data.section || "不明");
+      setConfidence(data.confidence ?? 0);
+      setReason(data.reason || "");
     } catch (e: any) {
-      setResult("");
       setError(e.message ?? "通信に失敗しました");
     } finally {
       setIsSearching(false);
@@ -91,7 +95,18 @@ export default function Home() {
       <div className="w-full max-w-md p-5 bg-white rounded-2xl text-center
                       [box-shadow:8px_8px_24px_#e5e7eb,_-8px_-8px_24px_#ffffff]">
         <p className="text-sm text-gray-400 mb-1">AI推定</p>
-        <div className="text-2xl font-bold text-gray-800">{result || "—"}</div>
+        <div className="text-2xl font-bold text-gray-800 mb-2">{section}</div>
+
+        {confidence !== null && (
+          <div className="w-full h-3 bg-gray-200 rounded-full mb-3 overflow-hidden">
+            <div
+              className="h-3 bg-blue-500 rounded-full transition-all duration-500"
+              style={{ width: `${confidence * 100}%` }}
+            />
+          </div>
+        )}
+
+        {reason && <p className="text-gray-500 text-sm">{reason}</p>}
       </div>
     </main>
   );
