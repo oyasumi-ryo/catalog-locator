@@ -37,20 +37,24 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ store, item }),
       });
+
       if (!res.ok) {
         const t = await res.text();
         throw new Error(t || "APIエラー");
       }
 
-      const data = await res.json(); // JSONで受け取る
-      setSection(data.section || "不明");
-      setConfidence(data.confidence ?? 0);
-      setReason(data.reason || "");
-      setStore("");
-      setItem("");
-      storeInputRef.current?.focus();
-    } catch (e: any) {
-      setError(e.message ?? "通信に失敗しました");
+      const data: unknown = await res.json();
+
+      if (isOk(data)) {
+        setSection(data.section || "不明");
+        setConfidence(data.confidence ?? 0);
+        setReason(data.reason || "");
+      } else {
+        const err = data as { error?: string; detail?: string };
+        setError(err?.error ?? "不明なエラー");
+      }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "通信に失敗しました");
     } finally {
       setIsSearching(false);
     }
@@ -145,5 +149,19 @@ export default function Home() {
         </div>
       </main>
     </>
+  );
+}
+
+type ApiResponse =
+  | { section: string; confidence: number; reason: string }
+  | { error: string; detail?: string };
+
+function isOk(res: unknown): res is { section: string; confidence: number; reason: string } {
+  if (typeof res !== "object" || res === null) return false;
+  const o = res as Record<string, unknown>;
+  return (
+    typeof o.section === "string" &&
+    typeof o.confidence === "number" &&
+    typeof o.reason === "string"
   );
 }
