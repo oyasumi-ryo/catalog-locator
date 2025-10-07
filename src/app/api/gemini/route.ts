@@ -1,3 +1,48 @@
+// --- 型定義と型ガード（上に置いてOK） ---
+type GeminiAnswer = {
+  section: string;
+  confidence: number; // 0..1
+  reason: string;
+};
+
+function isGeminiAnswer(x: unknown): x is GeminiAnswer {
+  if (typeof x !== "object" || x === null) return false;
+  const o = x as Record<string, unknown>;
+  return (
+    typeof o.section === "string" &&
+    typeof o.confidence === "number" &&
+    typeof o.reason === "string"
+  );
+}
+
+// Googleのレスポンスから text を安全に取り出す（any不使用）
+function extractTextFromGoogleResponse(u: unknown): string | undefined {
+  if (typeof u !== "object" || u === null) return undefined;
+  const o = u as Record<string, unknown>;
+
+  const candidates = o["candidates"];
+  if (!Array.isArray(candidates) || candidates.length === 0) return undefined;
+
+  const first = candidates[0];
+  if (typeof first !== "object" || first === null) return undefined;
+  const f = first as Record<string, unknown>;
+
+  const content = f["content"];
+  if (typeof content !== "object" || content === null) return undefined;
+  const c = content as Record<string, unknown>;
+
+  const parts = c["parts"];
+  if (!Array.isArray(parts) || parts.length === 0) return undefined;
+
+  const p0 = parts[0];
+  if (typeof p0 !== "object" || p0 === null) return undefined;
+  const p = p0 as Record<string, unknown>;
+
+  const text = p["text"];
+  return typeof text === "string" ? text : undefined;
+}
+
+// --- 本体 ---
 export async function POST(req: Request) {
   try {
     const { store, item } = await req.json();
@@ -37,15 +82,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const data = await res.json();
-    const raw: unknown =
-      // ここは API 仕様に沿って安全アクセス
-      (data as any)?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-
-    const text = typeof raw === "string" ? raw : "";
+    const dataUnknown: unknown = await res.json();
+    const textFromApi = extractTextFromGoogleResponse(dataUnknown) ?? "";
 
     // JSONだけ抽出
-    const match = text.match(/\{[\s\S]*\}/);
+    const match = textFromApi.match(/\{[\s\S]*\}/);
     if (!match) {
       return Response.json(
         { section: "不明", confidence: 0, reason: "JSON抽出に失敗" },
@@ -82,22 +123,4 @@ export async function POST(req: Request) {
     const msg = e instanceof Error ? e.message : String(e);
     return Response.json({ error: "Bad request", detail: msg }, { status: 400 });
   }
-}
-
-
-
-type GeminiAnswer = {
-  section: string;
-  confidence: number; // 0..1
-  reason: string;
-};
-
-function isGeminiAnswer(x: unknown): x is GeminiAnswer {
-  if (typeof x !== "object" || x === null) return false;
-  const o = x as Record<string, unknown>;
-  return (
-    typeof o.section === "string" &&
-    typeof o.confidence === "number" &&
-    typeof o.reason === "string"
-  );
 }
