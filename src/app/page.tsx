@@ -1,62 +1,95 @@
 "use client";
 
-import Image from "next/image";
-import styles from "./page.module.css";
 import { useState } from "react";
 
 export default function Home() {
-  const [store, setStore] = useState("")
-  const [item, setItem] = useState("")
+  const [store, setStore] = useState("");
+  const [item, setItem] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [result, setResult] = useState("ここにAIの回答が表示されます");
+  const [error, setError] = useState("");
 
   const handleClick = async () => {
+    if (!store || !item) {
+      setError("「買う場所」と「買いたいもの」を両方入力してね");
+      return;
+    }
+    setError("");
     setIsSearching(true);
     setResult("検索中...");
 
-    const res = await fetch("/api/gemini", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ store, item }),
-    });
-
-    const data = await res.text();
-    setResult(data);
-    setIsSearching(false);
+    try {
+      const res = await fetch("/api/gemini", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ store, item }),
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || "APIエラー");
+      }
+      const text = await res.text();
+      setResult(text.trim());
+    } catch (e: any) {
+      setResult("");
+      setError(e.message ?? "通信に失敗しました");
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-gray-50 gap-8">
       <h1 className="text-4xl font-bold text-gray-800">カタログ識別アプリ</h1>
 
-      <div className="w-full max-w-md p-4 bg-gray-50 rounded-2xl shadow-md">
+      {/* 入力カード */}
+      <div className="w-full max-w-md p-5 bg-white rounded-2xl shadow-lg
+                      [box-shadow:8px_8px_24px_#e5e7eb,_-8px_-8px_24px_#ffffff]">
         <div className="flex flex-col gap-3 text-gray-800">
           <input
             type="text"
             value={store}
             onChange={(e) => setStore(e.target.value)}
-            placeholder="買う場所を入力（例：100円均一）"
-            className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+            placeholder="買う場所（例：100円均一）"
+            className="w-full p-3 rounded-xl outline-none bg-gray-50 border border-gray-200
+                       focus:ring-2 focus:ring-blue-300"
           />
           <input
             type="text"
             value={item}
             onChange={(e) => setItem(e.target.value)}
-            placeholder="買いたいものを入力（例：ハサミ）"
-            className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+            placeholder="買いたいもの（例：ハサミ）"
+            className="w-full p-3 rounded-xl outline-none bg-gray-50 border border-gray-200
+                       focus:ring-2 focus:ring-blue-300"
           />
-          <button 
-            className="w-full p-2 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition-colors"
+
+          <button
             onClick={handleClick}
+            disabled={isSearching}
+            className={`w-full p-3 rounded-xl font-semibold transition-all
+              ${isSearching
+                ? "bg-blue-300 cursor-not-allowed"
+                : "bg-blue-500 hover:bg-blue-600 active:scale-[0.99]"} 
+              text-white flex items-center justify-center gap-2`}
           >
-            検索
+            {isSearching && (
+              <span className="inline-block w-4 h-4 border-2 border-white/70 border-t-transparent rounded-full animate-spin" />
+            )}
+            {isSearching ? "検索中..." : "検索"}
           </button>
+
+          {error && (
+            <p className="text-sm text-red-500 pt-1">{error}</p>
+          )}
         </div>
       </div>
-      <div className="w-full max-w-md p-4 bg-white rounded-2xl shadow-sm text-center text-gray-600">
-        {result}
-      </div>
 
+      {/* 結果カード */}
+      <div className="w-full max-w-md p-5 bg-white rounded-2xl text-center
+                      [box-shadow:8px_8px_24px_#e5e7eb,_-8px_-8px_24px_#ffffff]">
+        <p className="text-sm text-gray-400 mb-1">AI推定</p>
+        <div className="text-2xl font-bold text-gray-800">{result || "—"}</div>
+      </div>
     </main>
   );
 }
