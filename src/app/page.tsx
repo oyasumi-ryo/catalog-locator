@@ -28,8 +28,11 @@ export default function Home() {
         const t = await res.text();
         throw new Error(t || "APIエラー");
       }
-      const text = await res.text();
-      setResult(text.trim());
+
+      const data = await res.json(); // ← JSONに変更
+      // data: { section: string, confidence: number, reason: string }
+
+      setResult(`${data.section}（信頼度: ${(data.confidence * 100).toFixed(0)}%）`);
     } catch (e: any) {
       setResult("");
       setError(e.message ?? "通信に失敗しました");
