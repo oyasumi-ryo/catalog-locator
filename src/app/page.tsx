@@ -1,34 +1,25 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 
 export default function Home() {
   const [store, setStore] = useState("");
   const [item, setItem] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
   const [section, setSection] = useState("");
-  const [confidence, setConfidence] = useState<number | null>(null);
-  const [reason, setReason] = useState("買い場所、買いたいものを入力してね");
+  const [confidence, setConfidence] = useState(0);
+  const [reason, setReason] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState("");
-
-  const getConfidenceColor = (v: number) => {
-    if (v < 0.4) return "bg-red-500";
-    if (v < 0.7) return "bg-yellow-500";
-    return "bg-green-500";
-  };
-
-  const storeInputRef = useRef<HTMLInputElement>(null);
 
   const handleClick = async () => {
     if (!store || !item) {
-      setError("「買う場所」と「買いたいもの」を両方入力してね");
+      setError("入力内容を確認してください。");
       return;
     }
 
     setError("");
     setIsSearching(true);
-    setSection("検索中...");
-    setConfidence(null);
+    setSection("");
     setReason("");
 
     try {
@@ -38,130 +29,104 @@ export default function Home() {
         body: JSON.stringify({ store, item }),
       });
 
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(t || "APIエラー");
-      }
+      if (!res.ok) throw new Error("サーバーエラー");
 
-      const data: unknown = await res.json();
-
-      if (isOk(data)) {
-        setSection(data.section || "不明");
-        setConfidence(data.confidence ?? 0);
-        setReason(data.reason || "");
-      } else {
-        const err = data as { error?: string; detail?: string };
-        setError(err?.error ?? "不明なエラー");
-      }
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "通信に失敗しました");
+      const data = await res.json();
+      setSection(data.section);
+      setConfidence(data.confidence);
+      setReason(data.reason);
+      setStore("");
+      setItem("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "不明なエラーが発生しました");
     } finally {
       setIsSearching(false);
     }
   };
 
+  // 🟩 信頼度に応じて色を変える関数
+  const getConfidenceColor = (value: number) => {
+    if (value < 0.4) return "linear-gradient(to right, #f87171, #facc15)"; // 赤〜黄
+    if (value < 0.7) return "linear-gradient(to right, #facc15, #4ade80)"; // 黄〜緑
+    return "linear-gradient(to right, #4ade80, #3b82f6)"; // 緑〜青
+  };
+
   return (
-    <>
-      <header className="fixed top-0 w-full bg-white shadow-md z-10 py-3">
-        <h1 className="text-center text-xl font-semibold pt- text-gray-700">
-          買い物コーナー識別アプリ
-        </h1>
-      </header>
-      <main className="flex flex-col items-center justify-center min-h-screen bg-gray-50 gap-8">
+    <main className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-200 p-6">
+      <h1 className="text-4xl font-bold text-gray-700 mb-8 drop-shadow-sm">
+        カタログ識別アプリ
+      </h1>
 
-        {/* 入力カード */}
-        <div className="w-full max-w-md p-5 bg-white rounded-2xl shadow-lg
-                        [box-shadow:8px_8px_24px_#e5e7eb,_-8px_-8px_24px_#ffffff]">
-          <div className="flex flex-col gap-3 text-gray-800">
-            <input
-              ref={storeInputRef}       
-              type="text"
-              value={store}
-              onChange={(e) => setStore(e.target.value)}
-              placeholder="買う場所（例：100円均一、ホームセンター）"
-              className="w-full p-3 rounded-xl outline-none bg-gray-50 border border-gray-200
-                        focus:ring-2 focus:ring-blue-300"
+      {/* 入力カード */}
+      <div className="w-full max-w-md p-6 rounded-3xl shadow-inner bg-gray-100 border border-gray-200
+                      flex flex-col gap-4
+                      [box-shadow:8px_8px_16px_#d1d9e6,-8px_-8px_16px_#ffffff]">
+        <select
+          value={store}
+          onChange={(e) => setStore(e.target.value)}
+          className="p-3 rounded-xl bg-gray-100 border border-gray-200 text-gray-700
+                     focus:outline-none focus:ring-2 focus:ring-blue-400
+                     [box-shadow:inset_3px_3px_6px_#d1d9e6,inset_-3px_-3px_6px_#ffffff]"
+        >
+          <option value="">買う場所を選択</option>
+          <option value="100円ショップ">100円ショップ</option>
+          <option value="ドラッグストア">ドラッグストア</option>
+          <option value="ホームセンター">ホームセンター</option>
+          <option value="スーパー">スーパー</option>
+          <option value="コンビニ">コンビニ</option>
+          <option value="文房具店">文房具店</option>
+        </select>
+
+        <input
+          type="text"
+          value={item}
+          onChange={(e) => setItem(e.target.value)}
+          placeholder="買いたいものを入力（例：ハサミ）"
+          className="p-3 rounded-xl bg-gray-100 border border-gray-200 text-gray-700
+                     focus:outline-none focus:ring-2 focus:ring-blue-400
+                     [box-shadow:inset_3px_3px_6px_#d1d9e6,inset_-3px_-3px_6px_#ffffff]"
+        />
+
+        <button
+          onClick={handleClick}
+          disabled={isSearching}
+          className="p-3 rounded-xl text-white font-semibold transition-all
+                     bg-gradient-to-br from-blue-400 to-blue-600
+                     hover:from-blue-500 hover:to-blue-700 active:scale-95
+                     [box-shadow:4px_4px_10px_#d1d9e6,-4px_-4px_10px_#ffffff]"
+        >
+          {isSearching ? "検索中..." : "検索"}
+        </button>
+
+        {error && <p className="text-red-500 text-sm text-center mt-1">{error}</p>}
+      </div>
+
+      {/* 結果カード */}
+      {section && (
+        <div className="w-full max-w-md mt-8 p-6 rounded-3xl bg-gray-100 text-gray-700
+                        [box-shadow:8px_8px_16px_#d1d9e6,-8px_-8px_16px_#ffffff]">
+          <p className="text-lg font-semibold mb-2">
+            🔍 売り場候補: <span className="text-blue-600 font-bold">{section}</span>
+          </p>
+
+          {/* 🧭 信頼度バー */}
+          <div className="w-full bg-gray-200 rounded-full h-3 mt-2 mb-2
+                          [box-shadow:inset_2px_2px_4px_#d1d9e6,inset_-2px_-2px_4px_#ffffff]">
+            <div
+              className="h-3 rounded-full transition-all duration-700"
+              style={{
+                width: `${confidence * 100}%`,
+                background: getConfidenceColor(confidence),
+              }}
             />
-            <input
-              type="text"
-              value={item}
-              onChange={(e) => setItem(e.target.value)}
-              placeholder="買いたいもの（例：ハサミ）"
-              className="w-full p-3 rounded-xl outline-none bg-gray-50 border border-gray-200
-                        focus:ring-2 focus:ring-blue-300"
-            />
-
-            <button
-              onClick={handleClick}
-              disabled={isSearching}
-              className={`w-full p-3 rounded-xl font-semibold transition-all
-                ${isSearching
-                  ? "bg-blue-300 cursor-not-allowed"
-                  : "bg-blue-500 hover:bg-blue-600 active:scale-[0.99]"} 
-                text-white flex items-center justify-center gap-2`}
-            >
-              {isSearching && (
-                <span className="inline-block w-4 h-4 border-2 border-white/70 border-t-transparent rounded-full animate-spin" />
-              )}
-              {isSearching ? "検索中..." : "検索"}
-            </button>
-
-            {error && (
-              <p className="text-sm text-red-500 pt-1">{error}</p>
-            )}
           </div>
+
+          <p className="text-sm text-gray-600 mb-1">
+            信頼度: {(confidence * 100).toFixed(1)}%
+          </p>
+          <p className="text-sm">{reason}</p>
         </div>
-
-        {/* 結果カード */}
-        <div className="w-full max-w-md p-5 bg-white rounded-2xl text-center
-                        [box-shadow:8px_8px_24px_#e5e7eb,_-8px_-8px_24px_#ffffff]">
-          <p className="text-sm text-gray-400 mb-1">AI推定</p>
-          <div className="text-2xl font-bold text-gray-800 mb-2">{section}</div>
-
-          {confidence !== null && (
-            <div className="w-full mb-3">
-              {/* ラベル行（%表示） */}
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-gray-400">信頼度</span>
-                <span className="text-xs font-medium text-gray-600">
-                  {(confidence * 100).toFixed(0)}%
-                </span>
-              </div>
-
-              {/* ゲージ本体 */}
-              <div
-                className="w-full h-3 bg-gray-200 rounded-full overflow-hidden"
-                role="progressbar"
-                aria-valuenow={Math.round(confidence * 100)}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-label="AI推定の信頼度"
-              >
-                <div
-                  className={`h-3 rounded-full transition-all duration-500 ${getConfidenceColor(confidence)}`}
-                  style={{ width: `${confidence * 100}%` }}
-                />
-              </div>
-            </div>
-          )}
-
-          {reason && <p className="text-gray-500 text-sm">{reason}</p>}
-        </div>
-      </main>
-    </>
-  );
-}
-
-type ApiResponse =
-  | { section: string; confidence: number; reason: string }
-  | { error: string; detail?: string };
-
-function isOk(res: unknown): res is { section: string; confidence: number; reason: string } {
-  if (typeof res !== "object" || res === null) return false;
-  const o = res as Record<string, unknown>;
-  return (
-    typeof o.section === "string" &&
-    typeof o.confidence === "number" &&
-    typeof o.reason === "string"
+      )}
+    </main>
   );
 }
